@@ -24,6 +24,7 @@ import LinkIcon from "@mui/icons-material/Link";
 import DescriptionIcon from "@mui/icons-material/Description";
 import ClearIcon from "@mui/icons-material/Clear";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import RefreshIcon from "@mui/icons-material/Refresh";
 
 // Import Tauri v2 APIs
 import { readText, writeText } from "@tauri-apps/plugin-clipboard-manager";
@@ -151,6 +152,9 @@ export const ClipboardUI: React.FC = () => {
   // Real history items state (populated dynamically)
   const [historyItems, setHistoryItems] = useState<ClipboardItem[]>([]);
 
+  // Ref to track last cleared text to prevent immediate re-add from polling loop
+  const lastClearedRef = useRef<string>("");
+
   // Ticker to force relative timestamps to refresh
   const [, setTimeTicker] = useState(0);
 
@@ -184,11 +188,19 @@ export const ClipboardUI: React.FC = () => {
       try {
         const text = await readText();
         if (text && text.trim()) {
+          // If the text is the same as the last cleared text, ignore it
+          if (text === lastClearedRef.current) {
+            return;
+          }
+
           setHistoryItems((prev) => {
             // If the clipboard text is already the top item in history, do nothing
             if (prev.length > 0 && prev[0].content === text) {
               return prev;
             }
+
+            // Once a new text is copied, we can reset the clear blocker
+            lastClearedRef.current = "";
 
             // Otherwise, remove any duplicate instances elsewhere in the history,
             // create the new item, and add it to the top.
@@ -261,6 +273,19 @@ export const ClipboardUI: React.FC = () => {
       setSnackbarMessage("Failed to copy snippet.");
       setSnackbarOpen(true);
     }
+  };
+
+  // Clear clipboard history
+  const handleClearHistory = async () => {
+    try {
+      const currentText = await readText();
+      lastClearedRef.current = currentText || "";
+    } catch (err) {
+      console.error("Failed to check current clipboard state:", err);
+    }
+    setHistoryItems([]);
+    setSnackbarMessage("Clipboard history cleared!");
+    setSnackbarOpen(true);
   };
 
   // Keyboard navigation logic
@@ -367,19 +392,35 @@ export const ClipboardUI: React.FC = () => {
                       />
                     </InputAdornment>
                   ),
-                  endAdornment: searchQuery && (
-                    <InputAdornment position="end" sx={{ pr: 2 }}>
+                  endAdornment: (
+                    <InputAdornment position="end" sx={{ pr: 2, display: "flex", alignItems: "center", gap: 1 }}>
+                      {searchQuery && (
+                        <IconButton
+                          size="small"
+                          onClick={() => setSearchQuery("")}
+                          sx={{
+                            color: prefersDarkMode ? "rgba(255, 255, 255, 0.4)" : "rgba(0, 0, 0, 0.4)",
+                            "&:hover": {
+                              backgroundColor: prefersDarkMode ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.05)",
+                            },
+                          }}
+                        >
+                          <ClearIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      )}
                       <IconButton
                         size="small"
-                        onClick={() => setSearchQuery("")}
+                        onClick={handleClearHistory}
+                        title="Clear History"
                         sx={{
                           color: prefersDarkMode ? "rgba(255, 255, 255, 0.4)" : "rgba(0, 0, 0, 0.4)",
                           "&:hover": {
-                            backgroundColor: prefersDarkMode ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.05)",
+                            color: prefersDarkMode ? "#ff453a" : "#d32f2f",
+                            backgroundColor: prefersDarkMode ? "rgba(255, 69, 58, 0.12)" : "rgba(211, 47, 47, 0.08)",
                           },
                         }}
                       >
-                        <ClearIcon sx={{ fontSize: 16 }} />
+                        <RefreshIcon sx={{ fontSize: 18 }} />
                       </IconButton>
                     </InputAdornment>
                   ),
