@@ -12,9 +12,15 @@
   "app": {
     "windows": [
       {
-        "title": "tauri-app",
-        "width": 800,
-        "height": 600
+        "label": "main",
+        "title": "Clipboard Time Machine",
+        "width": 600,
+        "height": 450,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "center": true,
+        "visible": true
       }
     ],
     "security": {
